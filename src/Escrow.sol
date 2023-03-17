@@ -53,4 +53,40 @@ contract Escrow {
 
     // Tracks bettors and their betting token and amount
     mapping(address bettor => mapping(ERC20 => uint256 amount)) public bets;
+
+    event DepositWBTC(address indexed bettor, uint128 amount);
+    event DepositUSDC(address indexed bettor, uint128 amount);
+
+    error AmountCannotBeZero();
+    error MaxDepositsExceeded();
+
+    /**
+     * @notice Deposit WBTC into the contract
+     * @param  amount  uint128  WBTC deposit amount
+     */
+    function depositWBTC(uint128 amount) external {
+        if (amount == 0) revert AmountCannotBeZero();
+        if ((deposits.wbtc += amount) > MAX_WBTC) revert MaxDepositsExceeded();
+
+        WBTC.safeTransferFrom(msg.sender, address(this), amount);
+
+        bets[msg.sender][WBTC] += amount;
+
+        emit DepositWBTC(msg.sender, amount);
+    }
+
+    /**
+     * @notice Deposit USDC into the contract
+     * @param  amount  uint128  USDC deposit amount
+     */
+    function depositUSDC(uint128 amount) external {
+        if (amount == 0) revert AmountCannotBeZero();
+        if ((deposits.usdc += amount) > MAX_USDC) revert MaxDepositsExceeded();
+
+        USDC.safeTransferFrom(msg.sender, address(this), amount);
+
+        bets[msg.sender][USDC] += amount;
+
+        emit DepositUSDC(msg.sender, amount);
+    }
 }
