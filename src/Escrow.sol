@@ -51,31 +51,36 @@ contract Escrow {
     // Tracks contract deposits
     Deposits public deposits;
 
+    // Tracks the price of 1 BTC in USD at the end of the bet
+    uint256 public btcEndPrice;
+
     // Tracks bettors and their betting token and amount
     mapping(address bettor => mapping(ERC20 => uint256 amount)) public bets;
 
     event DepositWBTC(address indexed bettor, uint128 amount);
     event DepositUSDC(address indexed bettor, uint128 amount);
+    event SetBTCEndPrice(uint256 price);
 
     error AmountCannotBeZero();
     error MaxDepositsExceeded();
+    error BetHasNotEnded();
+    error EndPriceAlreadySet();
 
     /**
-     * @notice Retrieves the BTC/USD price from Chainlink-provided data feed and
-     * verifies whether the price of 1 BTC is greater than or equal to $1M USD
-     * @return bool  True if 1 BTC is worth $1M or more, false otherwise
+     * @notice Sets the BTC end price (USD, 8 decimals) after the bet has ended
      */
-    function _oneMillionUnitedStatesDollarsForOneBitcoin()
-        internal
-        view
-        returns (bool)
-    {
+    function setBTCEndPrice() external {
+        // Only allow the end price to be set after the end timestamp
+        if (block.timestamp < END_TIMESTAMP) revert BetHasNotEnded();
+
+        // Only allow the end price to be set if it hasn't already been set
+        if (btcEndPrice != 0) revert EndPriceAlreadySet();
+
+        // Fetch and set the price from the Chainlink BTC/USD data feed
         (, int256 answer, , , ) = BTC_USD_PRICE_ORACLE.latestRoundData();
+        btcEndPrice = uint256(answer);
 
-        // Price oracle returns a USD value with 8 decimals, so 1_000_000e8 is $1M
-        if (answer >= 1_000_000e8) return true;
-
-        return false;
+        emit SetBTCEndPrice(uint256(answer));
     }
 
     /**
