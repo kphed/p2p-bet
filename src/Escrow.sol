@@ -64,6 +64,7 @@ contract Escrow {
     error AmountCannotBeZero();
     error MaxDepositsExceeded();
     error BetHasNotEnded();
+    error BetHasEnded();
     error EndPriceAlreadySet();
 
     /**
@@ -91,6 +92,9 @@ contract Escrow {
         if (amount == 0) revert AmountCannotBeZero();
         if ((deposits.wbtc += amount) > MAX_WBTC) revert MaxDepositsExceeded();
 
+        // If the BTC end price has been set, that means the bet is already over
+        if (btcEndPrice != 0) revert BetHasEnded();
+
         WBTC.safeTransferFrom(msg.sender, address(this), amount);
 
         bets[msg.sender][WBTC] += amount;
@@ -105,6 +109,9 @@ contract Escrow {
     function depositUSDC(uint128 amount) external {
         if (amount == 0) revert AmountCannotBeZero();
         if ((deposits.usdc += amount) > MAX_USDC) revert MaxDepositsExceeded();
+
+        // If the BTC end price has been set, that means the bet is already over
+        if (btcEndPrice != 0) revert BetHasEnded();
 
         USDC.safeTransferFrom(msg.sender, address(this), amount);
 
