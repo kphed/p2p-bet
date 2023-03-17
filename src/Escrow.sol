@@ -3,6 +3,7 @@ pragma solidity 0.8.18;
 
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {IEACAggregatorProxy} from "src/IEACAggregatorProxy.sol";
 
 contract Escrow {
     using SafeTransferLib for ERC20;
@@ -33,4 +34,10 @@ contract Escrow {
      */
     uint256 public constant DURATION = 90 days;
     uint256 public constant WBTC_USDC_PRICE = 1_000_000e6;
+
+    // BTC/USD price oracle (Chainlink)
+    // https://data.chain.link/ethereum/mainnet/crypto-usd/btc-usd
+    // https://etherscan.io/address/0xf4030086522a5beea4988f8ca5b36dbc97bee88c#code
+    IEACAggregatorProxy public constant BTC_USD_PRICE_ORACLE =
+        IEACAggregatorProxy(0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
 }
