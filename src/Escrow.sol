@@ -8,6 +8,11 @@ import {IEACAggregatorProxy} from "src/IEACAggregatorProxy.sol";
 contract Escrow {
     using SafeTransferLib for ERC20;
 
+    struct Deposits {
+        uint128 wbtc;
+        uint128 usdc;
+    }
+
     ERC20 public constant WBTC =
         ERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599);
     ERC20 public constant USDC =
@@ -31,8 +36,10 @@ contract Escrow {
      *
      * https://twitter.com/balajis/status/1636827051419389952
      *
+     * 90 days from the tweet is June 15th, 2023 at 4:29 EST (epoch timestamp below)
+     *
      */
-    uint256 public constant DURATION = 90 days;
+    uint256 public immutable END_TIMESTAMP = 1686860940;
     uint256 public constant WBTC_USDC_PRICE = 1_000_000e6;
 
     // BTC/USD price oracle (Chainlink)
@@ -40,4 +47,10 @@ contract Escrow {
     // https://etherscan.io/address/0xf4030086522a5beea4988f8ca5b36dbc97bee88c#code
     IEACAggregatorProxy public constant BTC_USD_PRICE_ORACLE =
         IEACAggregatorProxy(0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c);
+
+    // Tracks contract deposits
+    Deposits public deposits;
+
+    // Tracks bettors and their betting token and amount
+    mapping(address bettor => mapping(ERC20 => uint256 amount)) public bets;
 }
