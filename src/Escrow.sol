@@ -4,13 +4,15 @@ pragma solidity 0.8.18;
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {IEACAggregatorProxy} from "src/IEACAggregatorProxy.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 contract Escrow {
     using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
 
     struct Deposits {
-        uint128 wbtc;
-        uint128 usdc;
+        uint256 wbtc;
+        uint256 usdc;
     }
 
     ERC20 public constant WBTC =
@@ -40,7 +42,9 @@ contract Escrow {
      *
      */
     uint256 public immutable END_TIMESTAMP = 1686860940;
-    uint256 public constant WBTC_USDC_PRICE = 1_000_000e6;
+
+    // 8 decimal USD price for 1 (W)BTC (1_000_000e8 is 1,000,000 USD)
+    uint256 public constant WBTC_USDC_PRICE = 1_000_000e8;
 
     // BTC/USD price oracle (Chainlink)
     // https://data.chain.link/ethereum/mainnet/crypto-usd/btc-usd
@@ -57,15 +61,27 @@ contract Escrow {
     // Tracks bettors and their betting token and amount
     mapping(address bettor => mapping(ERC20 => uint256 amount)) public bets;
 
-    event DepositWBTC(address indexed bettor, uint128 amount);
-    event DepositUSDC(address indexed bettor, uint128 amount);
+    event DepositWBTC(address indexed bettor, uint256 amount);
+    event DepositUSDC(address indexed bettor, uint256 amount);
     event SetBTCEndPrice(uint256 price);
+    event ClaimUSDC(
+        address indexed bettor,
+        uint256 betAmount,
+        uint256 prizeAmount
+    );
+    event ClaimWBTC(
+        address indexed bettor,
+        uint256 betAmount,
+        uint256 prizeAmount
+    );
 
     error AmountCannotBeZero();
     error MaxDepositsExceeded();
     error BetHasNotEnded();
     error BetHasEnded();
     error EndPriceAlreadySet();
+    error ZeroDepositBalance();
+    error BTCEndPriceIsOverOneMillionUnitedStatesDollars();
 
     /**
      * @notice Sets the BTC end price (USD, 8 decimals) after the bet has ended
@@ -86,9 +102,9 @@ contract Escrow {
 
     /**
      * @notice Deposit WBTC into the contract
-     * @param  amount  uint128  WBTC deposit amount
+     * @param  amount  uint256  WBTC deposit amount
      */
-    function depositWBTC(uint128 amount) external {
+    function depositWBTC(uint256 amount) external {
         if (amount == 0) revert AmountCannotBeZero();
         if ((deposits.wbtc += amount) > MAX_WBTC) revert MaxDepositsExceeded();
 
@@ -104,9 +120,9 @@ contract Escrow {
 
     /**
      * @notice Deposit USDC into the contract
-     * @param  amount  uint128  USDC deposit amount
+     * @param  amount  uint256  USDC deposit amount
      */
-    function depositUSDC(uint128 amount) external {
+    function depositUSDC(uint256 amount) external {
         if (amount == 0) revert AmountCannotBeZero();
         if ((deposits.usdc += amount) > MAX_USDC) revert MaxDepositsExceeded();
 
@@ -118,5 +134,79 @@ contract Escrow {
         bets[msg.sender][USDC] += amount;
 
         emit DepositUSDC(msg.sender, amount);
+    }
+
+    /**
+     * @notice Allows WBTC depositors to claim their USDC winnings and original bet
+     */
+    function claimUSDC() external {
+        if (btcEndPrice == 0) revert BetHasNotEnded();
+
+        uint256 betAmount = bets[msg.sender][WBTC];
+
+        if (betAmount == 0) revert ZeroDepositBalance();
+
+        // Set the bettors WBTC bet amount to 0 and prevent future claims
+        // regardless of whether they won or lost
+        bets[msg.sender][WBTC] = 0;
+
+        uint256 prizeAmount;
+
+        // The bettor wins if the BTC price after 90 days is BELOW $1M USD
+        if (btcEndPrice < WBTC_USDC_PRICE) {
+            // Calculate the bettors share of the USDC winnings based on their WBTC bet amount
+            prizeAmount = deposits.usdc.mulDivDown(betAmount, deposits.wbtc);
+
+            // Deduct the claimed USDC winnings from the total USDC deposits
+            deposits.usdc -= prizeAmount;
+
+            // Transfer the USDC winnings to the bettor
+            USDC.safeTransfer(msg.sender, prizeAmount);
+
+            // Deduct the WBTC bet amount from the total WBTC deposits
+            deposits.wbtc -= betAmount;
+
+            // Transfer the WBTC bet amount back to the bettor
+            WBTC.safeTransfer(msg.sender, betAmount);
+        }
+
+        emit ClaimUSDC(msg.sender, betAmount, prizeAmount);
+    }
+
+    /**
+     * @notice Allows USDC depositors to claim their WBTC winnings and original bet
+     */
+    function claimWBTC() external {
+        if (btcEndPrice == 0) revert BetHasNotEnded();
+
+        uint256 betAmount = bets[msg.sender][USDC];
+
+        if (betAmount == 0) revert ZeroDepositBalance();
+
+        // Set the bettors USDC bet amount to 0 and prevent future claims
+        // regardless of whether they won or lost
+        bets[msg.sender][USDC] = 0;
+
+        uint256 prizeAmount;
+
+        // The bettor wins if the BTC price after 90 days is EQUAL TO OR ABOVE $1M USD
+        if (btcEndPrice >= WBTC_USDC_PRICE) {
+            // Calculate the bettors share of the WBTC winnings based on their USDC bet amount
+            prizeAmount = deposits.wbtc.mulDivDown(betAmount, deposits.usdc);
+
+            // Deduct the claimed WBTC winnings from the total WBTC deposits
+            deposits.wbtc -= prizeAmount;
+
+            // Transfer the WBTC winnings to the bettor
+            WBTC.safeTransfer(msg.sender, prizeAmount);
+
+            // Deduct the USDC bet amount from the total USDC deposits
+            deposits.usdc -= betAmount;
+
+            // Transfer the USDC bet amount back to the bettor
+            USDC.safeTransfer(msg.sender, betAmount);
+        }
+
+        emit ClaimWBTC(msg.sender, betAmount, prizeAmount);
     }
 }
