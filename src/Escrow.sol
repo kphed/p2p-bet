@@ -17,4 +17,20 @@ contract Escrow {
 
     // 2,000,000 USDC (ERC20 token has 6 decimals, so 2_000_000e6 is 2,000,000 USDC)
     uint256 public constant MAX_USDC = 2_000_000e6;
+
+    /**
+     *
+     * Bet terms (excerpt from balajis's tweet, see bottom for link)
+     *
+     * ...
+     * Terms of the bet: ideally someone can set up a smart contract where BTC is
+     * worth >$1M in 90 days, then I win. If it's worth less than $1M in 90 days,
+     * then the counterparty gets the $1M in USD.
+     * ...
+     *
+     * https://twitter.com/balajis/status/1636827051419389952
+     *
+     */
+    uint256 public constant DURATION = 90 days;
+    uint256 public constant WBTC_USDC_PRICE = 1_000_000e6;
 }
