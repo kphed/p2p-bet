@@ -15,8 +15,11 @@ contract Escrow {
         uint256 usdc;
     }
 
+    // WBTC: https://etherscan.io/address/0x2260fac5e5542a773aa44fbcfedf7c193bc2c599
     ERC20 public constant WBTC =
         ERC20(0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599);
+
+    // USDC: https://etherscan.io/token/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
     ERC20 public constant USDC =
         ERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
@@ -81,7 +84,6 @@ contract Escrow {
     error BetHasEnded();
     error EndPriceAlreadySet();
     error ZeroDepositBalance();
-    error BTCEndPriceIsOverOneMillionUnitedStatesDollars();
 
     /**
      * @notice Sets the BTC end price (USD, 8 decimals) after the bet has ended
