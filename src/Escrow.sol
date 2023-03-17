@@ -61,6 +61,24 @@ contract Escrow {
     error MaxDepositsExceeded();
 
     /**
+     * @notice Retrieves the BTC/USD price from Chainlink-provided data feed and
+     * verifies whether the price of 1 BTC is greater than or equal to $1M USD
+     * @return bool  True if 1 BTC is worth $1M or more, false otherwise
+     */
+    function _oneMillionUnitedStatesDollarsForOneBitcoin()
+        internal
+        view
+        returns (bool)
+    {
+        (, int256 answer, , , ) = BTC_USD_PRICE_ORACLE.latestRoundData();
+
+        // Price oracle returns a USD value with 8 decimals, so 1_000_000e8 is $1M
+        if (answer >= 1_000_000e8) return true;
+
+        return false;
+    }
+
+    /**
      * @notice Deposit WBTC into the contract
      * @param  amount  uint128  WBTC deposit amount
      */
