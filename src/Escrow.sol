@@ -41,10 +41,10 @@ contract Escrow {
      *
      * https://twitter.com/balajis/status/1636827051419389952
      *
-     * 90 days from the tweet is June 15th, 2023 at 4:29 EST (epoch timestamp below)
+     * 90 days from the tweet is June 15th, 2023 at 4:29 EST (unix timestamp below)
      *
      */
-    uint256 public immutable END_TIMESTAMP = 1686860940;
+    uint256 public constant END_TIMESTAMP = 1_686_860_940;
 
     // 8 decimal USD price for 1 (W)BTC (1_000_000e8 is 1,000,000 USD)
     uint256 public constant WBTC_USDC_PRICE = 1_000_000e8;
